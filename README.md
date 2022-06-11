@@ -164,4 +164,66 @@ domain-cert           kubernetes.io/tls                     2      2s
 Выберите любимый образ контейнера, подключите секреты и проверьте их доступность
 как в виде переменных окружения, так и в виде примонтированного тома.
 
+### Решение
+
+
+Создаем deployment, указываем монтирование сертификатов из предыдущего задания:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: nginx
+  name: nginx
+  namespace: clokub-14-01
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - image: nginx
+          imagePullPolicy: Always
+          name: nginx
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: certs
+              mountPath: "/etc/nginx/ssl"
+              readOnly: true
+          ports:
+            - containerPort: 80
+      volumes:
+        - name: certs
+          secret:
+            secretName: domain-cert
+```
+  
+Применяем:
+```
+kubectl apply -f app/
+deployment.apps/nginx created
+
+kubectl get pods
+NAME                     READY   STATUS    RESTARTS   AGE
+nginx-756bb998cd-bl2dc   1/1     Running   0          2m31s
+```
+  
+Проверяем что наши сертификаты примонтировались в /etc/nginx/ssl/
+```
+kubectl exec -it nginx-756bb998cd-bl2dc -- bash
+root@nginx-756bb998cd-bl2dc:/# cd /etc/nginx/ssl/
+root@nginx-756bb998cd-bl2dc:/etc/nginx/ssl# ls
+tls.crt  tls.key
+```
 ---
